@@ -1,0 +1,121 @@
+version: "3.7"
+
+services:
+  traefik:
+    image: "traefik"
+    restart: always
+    command:
+      - "--api=true"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.mytlschallenge.acme.tlschallenge=true"
+      - "--certificatesresolvers.mytlschallenge.acme.email=${SSL_EMAIL}"
+      - "--certificatesresolvers.mytlschallenge.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - traefik_data:/letsencrypt
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - internal
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    restart: always
+    ports:
+      - "127.0.0.1:5678:5678"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.n8n.rule=Host(`${SUBDOMAIN}.${DOMAIN_NAME}`)
+      - traefik.http.routers.n8n.tls=true
+      - traefik.http.routers.n8n.entrypoints=web,websecure
+      - traefik.http.routers.n8n.tls.certresolver=mytlschallenge
+      - traefik.http.middlewares.n8n.headers.SSLRedirect=true
+      - traefik.http.middlewares.n8n.headers.STSSeconds=315360000
+      - traefik.http.middlewares.n8n.headers.browserXSSFilter=true
+      - traefik.http.middlewares.n8n.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.n8n.headers.forceSTSHeader=true
+      - traefik.http.middlewares.n8n.headers.SSLHost=${DOMAIN_NAME}
+      - traefik.http.middlewares.n8n.headers.STSIncludeSubdomains=true
+      - traefik.http.middlewares.n8n.headers.STSPreload=true
+      - traefik.http.routers.n8n.middlewares=n8n@docker
+    environment:
+      - N8N_HOST=${SUBDOMAIN}.${DOMAIN_NAME}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin@admin.com
+      - N8N_BASIC_AUTH_PASSWORD=3Lchunch0
+      - NODE_ENV=production
+      - WEBHOOK_URL=https://${SUBDOMAIN}.${DOMAIN_NAME}/
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - /local-files:/files
+    networks:
+      - internal
+
+  minio:
+    image: quay.io/minio/minio
+    container_name: minio
+    volumes:
+      - minio_data:/data
+    environment:
+      - MINIO_ROOT_USER=Info@sweatstrategies.com
+      - MINIO_ROOT_PASSWORD=Sweatybiz1!
+    command: server /data --console-address ":9001"
+    networks:
+      - internal
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.minio.rule=Host(`minio.${DOMAIN_NAME}`)
+      - traefik.http.routers.minio.entrypoints=web,websecure
+      - traefik.http.routers.minio.tls=true
+      - traefik.http.routers.minio.tls.certresolver=mytlschallenge
+      - traefik.http.services.minio.loadbalancer.server.port=9001
+
+  nca-toolkit:
+    image: stephengpope/no-code-architects-toolkit:latest
+    container_name: nca-toolkit
+    environment:
+      - API_KEY=b0716196b72747e4a99f3ab2c38a5d2d
+      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ACCESS_KEY=UWtTN79FNCYnVuuhR2iV
+      - S3_SECRET_KEY=f0uohruSaWD1Iut5jHQYxXTg0OzFDCLRqeEDPzSY
+      - S3_BUCKET_NAME=nca-toolkit
+      - S3_REGION=None
+    networks:
+      - internal
+    restart: unless-stopped
+
+  scraper:
+    build: 
+      context: /root/scrape_api
+    container_name: scraper-api
+    ports:
+      - "3000:3000"
+    volumes:
+      - /root/scrape_api:/app
+    cap_add:
+      - SYS_ADMIN
+    restart: unless-stopped
+    networks:
+      - internal
+
+volumes:
+  traefik_data:
+    external: true
+  n8n_data:
+    external: true
+  minio_data:
+
+networks:
+  internal:
+    driver: bridge
