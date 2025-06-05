@@ -30,31 +30,6 @@ services:
     networks:
       - internal
 
-  api-secure:
-    build:
-      context: /home/biwi47do/docker-projects/api-secure
-    container_name: api-secure
-    ports:
-      - "127.0.0.1:3443:3443"
-    volumes:
-      - /home/biwi47do/docker-projects/api-secure/ssl:/app/ssl
-    cap_add:
-      - SYS_ADMIN
-    restart: always
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.api-secure.rule=Host(`${API_SUBDOMAIN}.${DOMAIN_NAME}`)
-      - traefik.http.routers.api-secure.tls=true
-      - traefik.http.routers.api-secure.entrypoints=websecure
-      - traefik.http.routers.api-secure.tls.certresolver=mytlschallenge
-      - traefik.http.services.api-secure.loadbalancer.server.port=3443 
-    depends_on:
-      - traefik
-    networks:
-      - internal
-    environment:
-      - PORT=3443
-
   n8n:
     image: docker.n8n.io/n8nio/n8n:1.95.3
     restart: always
