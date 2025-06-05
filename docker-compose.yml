@@ -43,6 +43,17 @@ services:
     cap_add:
       - SYS_ADMIN
     restart: always
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.api.rule=Host(`${API_SUBDOMAIN}.${DOMAIN_NAME}`)
+      - traefik.http.routers.api.tls=true
+      - traefik.http.routers.api.entrypoints=websecure
+      - traefik.http.routers.api.tls.certresolver=mytlschallenge
+      - traefik.http.middlewares.api-redirect.redirectscheme.scheme=https
+      - traefik.http.routers.api.middlewares=api-redirect@docker
+      - traefik.http.services.api.loadbalancer.server.port=3443
+    depends_on:
+      - traefik
     networks:
       - internal
     environment:
