@@ -1,45 +1,9 @@
 services:
-  traefik:
-    image: traefik:v2.10
-    command:
-      - "--api=true"
-      - "--api.dashboard=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.websecure.address=:443"
-      - "--certificatesresolvers.mytlschallenge.acme.tlschallenge=true"
-      - "--certificatesresolvers.mytlschallenge.acme.email=${SSL_EMAIL}"
-      - "--certificatesresolvers.mytlschallenge.acme.storage=/letsencrypt/acme.json"
-    ports:
-      - "8080:8080"   # Dashboard HTTP interno para administración (opcional)
-      - "443:443"     # HTTPS público
-    volumes:
-      - traefik_data:/letsencrypt
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    restart: always
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.traefik-dashboard.rule=Host(`traefik.${DOMAIN_NAME}`)
-      - traefik.http.routers.traefik-dashboard.entrypoints=websecure
-      - traefik.http.routers.traefik-dashboard.tls.certresolver=mytlschallenge
-      - traefik.http.routers.traefik-dashboard.service=api@internal
-    networks:
-      - internal
-
   n8n:
     image: docker.n8n.io/n8nio/n8n:1.95.3
     restart: always
     ports:
       - "127.0.0.1:5678:5678"
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.n8n.rule=Host(`${N8N_SUBDOMAIN}.${DOMAIN_NAME}`)
-      - traefik.http.routers.n8n.tls=true
-      - traefik.http.routers.n8n.entrypoints=websecure
-      - traefik.http.routers.n8n.tls.certresolver=mytlschallenge
-      - traefik.http.middlewares.n8n-redirect.redirectscheme.scheme=https
-      - traefik.http.routers.n8n.middlewares=n8n-redirect@docker
-      - traefik.http.services.n8n.loadbalancer.server.port=5678
     environment:
       - N8N_HOST=${N8N_SUBDOMAIN}.${DOMAIN_NAME}
       - N8N_PORT=5678
@@ -74,28 +38,20 @@ services:
       - internal
 
   pgadmin:
-    image: dpage/pgadmin4:latest # Imagen oficial de pgAdmin 4
+    image: dpage/pgadmin4:latest
     restart: always
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-      PGADMIN_LISTEN_PORT: 80 # pgAdmin escucha en el puerto 80 internamente
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.pgadmin.rule=Host(`pgadmin.${DOMAIN_NAME}`) # Subdominio para pgAdmin
-      - traefik.http.routers.pgadmin.tls=true
-      - traefik.http.routers.pgadmin.entrypoints=websecure
-      - traefik.http.routers.pgadmin.tls.certresolver=mytlschallenge
-      - traefik.http.services.pgadmin.loadbalancer.server.port=80 # Puerto interno de pgAdmin
+      PGADMIN_LISTEN_PORT: 80
     volumes:
-      - pgadmin_data:/var/lib/pgadmin # Volumen para persistir la configuración y datos de pgAdmin
+      - pgadmin_data:/var/lib/pgadmin
     depends_on:
-      - n8n_postgres # pgAdmin necesita que la base de datos esté lista
+      - n8n_postgres
     networks:
       - internal
 
 volumes:
-  traefik_data:
   n8n_data:
   postgres_data:
   pgadmin_data:
