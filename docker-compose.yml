@@ -1,6 +1,4 @@
-version: '3.8'
-
-services:
+explicitarloservices:
   traefik:
     image: "traefik:v2.10"
     command:
@@ -32,7 +30,7 @@ services:
     networks:
       - internal
 
-  api:
+  api-secure:
     build:
       context: /home/biwi47do/docker-projects/api-secure
     container_name: api-secure
@@ -45,13 +43,11 @@ services:
     restart: always
     labels:
       - traefik.enable=true
-      - traefik.http.routers.api.rule=Host(`${API_SUBDOMAIN}.${DOMAIN_NAME}`)
-      - traefik.http.routers.api.tls=true
-      - traefik.http.routers.api.entrypoints=websecure
-      - traefik.http.routers.api.tls.certresolver=mytlschallenge
-      - traefik.http.middlewares.api-redirect.redirectscheme.scheme=https
-      - traefik.http.routers.api.middlewares=api-redirect@docker
-      - traefik.http.services.api.loadbalancer.server.port=3443
+      - traefik.http.routers.api-secure.rule=Host(`${API_SUBDOMAIN}.${DOMAIN_NAME}`)
+      - traefik.http.routers.api-secure.tls=true
+      - traefik.http.routers.api-secure.entrypoints=websecure
+      - traefik.http.routers.api-secure.tls.certresolver=mytlschallenge
+      - traefik.http.services.api-secure.loadbalancer.server.port=3443 # Puerto interno de pgAdmin
     depends_on:
       - traefik
     networks:
