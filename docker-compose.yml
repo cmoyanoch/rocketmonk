@@ -16,7 +16,7 @@ services:
     ports:
       - "8080:80"
       - "8443:443"
-      - "8080:8080" # Puerto para el dashboard de Traefik
+      - "8081:8080" # Puerto para el dashboard de Traefik
     volumes:
       - traefik_data:/letsencrypt
       - /var/run/docker.sock:/var/run/docker.sock:ro
