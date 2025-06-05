@@ -1,4 +1,4 @@
-explicitarloservices:
+services:
   traefik:
     image: "traefik:v2.10"
     command:
@@ -47,7 +47,7 @@ explicitarloservices:
       - traefik.http.routers.api-secure.tls=true
       - traefik.http.routers.api-secure.entrypoints=websecure
       - traefik.http.routers.api-secure.tls.certresolver=mytlschallenge
-      - traefik.http.services.api-secure.loadbalancer.server.port=3443 # Puerto interno de pgAdmin
+      - traefik.http.services.api-secure.loadbalancer.server.port=3443 
     depends_on:
       - traefik
     networks:
